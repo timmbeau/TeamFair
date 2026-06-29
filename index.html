@@ -307,6 +307,48 @@
   .text-soft { color: var(--text-soft); font-size: 0.83rem; }
   .divider { height: 1px; background: var(--border); margin: 13px 0; }
   .mt-6 { margin-top: 6px; }
+
+  /* PRESENTATION MODE */
+  .pres-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: #0f172a; flex-direction: column; align-items: stretch;
+  }
+  .pres-overlay.active { display: flex; }
+  .pres-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 28px 14px; flex-shrink: 0;
+  }
+  .pres-title { font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.45); letter-spacing: 0.5px; text-transform: uppercase; }
+  .pres-close {
+    background: rgba(255,255,255,0.1); border: none; color: white;
+    padding: 9px 20px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: background 0.15s;
+  }
+  .pres-close:hover { background: rgba(255,255,255,0.22); }
+  .pres-grid {
+    flex: 1; display: grid; padding: 4px 24px 28px;
+    gap: 14px; overflow: auto; align-content: start;
+  }
+  .pres-card {
+    background: linear-gradient(135deg, #1e293b 0%, #1a2744 100%);
+    border: 1.5px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px 22px;
+    animation: pres-pop 0.35s cubic-bezier(.4,0,.2,1) both;
+  }
+  @keyframes pres-pop { from { opacity:0; transform: scale(0.93) translateY(10px); } to { opacity:1; transform:none; } }
+  .pres-card-title {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800;
+    color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .pres-card-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+  .pres-name {
+    color: white; font-weight: 600; padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 1.05rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pres-name:last-child { border-bottom: none; }
+  .pres-num {
+    width: 24px; height: 24px; border-radius: 50%; background: rgba(96,165,250,0.15); color: #60a5fa;
+    font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -454,6 +496,15 @@
       <button class="btn btn-primary" onclick="confirmImport()">Importieren</button>
     </div>
   </div>
+</div>
+
+<!-- PRESENTATION OVERLAY -->
+<div class="pres-overlay" id="presOverlay">
+  <div class="pres-header">
+    <div class="pres-title" id="presTitle">🏃 TeamFair – Gruppenaufteilung</div>
+    <button class="pres-close" onclick="closePresentation()">✕ Beenden</button>
+  </div>
+  <div class="pres-grid" id="presGrid"></div>
 </div>
 
 <!-- TOAST -->
@@ -852,6 +903,7 @@ function renderResults(cls) {
       <h2>🎯 Gruppen (${currentGroups.length})
         <span style="display:flex;gap:7px;margin-left:auto;">
           <button class="btn btn-ghost btn-sm" onclick="generateGroups()">🔄 Neu würfeln</button>
+          <button class="btn btn-primary btn-sm" onclick="openPresentation()">🖥 Präsentation</button>
           <button class="btn btn-green btn-sm" onclick="exportGroups()">📋 Exportieren</button>
         </span>
       </h2>
@@ -868,6 +920,31 @@ function renderResults(cls) {
       </div>
       <div id="exportArea"></div>
     </div>`;
+}
+
+function openPresentation() {
+  if (!currentGroups.length) return;
+  const grid = document.getElementById('presGrid');
+  const numGroups = currentGroups.length;
+  // Responsive columns: try to fit all groups nicely
+  const cols = numGroups <= 2 ? numGroups : numGroups <= 4 ? 2 : numGroups <= 6 ? 3 : numGroups <= 9 ? 3 : 4;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.innerHTML = currentGroups.map((g, i) => `
+    <div class="pres-card" style="animation-delay:${i*0.06}s">
+      <div class="pres-card-title">Gruppe ${i+1}</div>
+      ${g.map((st, j) => `<div class="pres-name"><span class="pres-num">${j+1}</span>${st.name}</div>`).join('')}
+    </div>`).join('');
+  document.getElementById('presOverlay').classList.add('active');
+  document.addEventListener('keydown', presKeyHandler);
+}
+
+function closePresentation() {
+  document.getElementById('presOverlay').classList.remove('active');
+  document.removeEventListener('keydown', presKeyHandler);
+}
+
+function presKeyHandler(e) {
+  if (e.key === 'Escape') closePresentation();
 }
 
 function exportGroups() {
